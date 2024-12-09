@@ -16,7 +16,6 @@ import com.intellij.psi.util.PsiTreeUtil
 
 class ShowStatisticsAction : AnAction("Show Kotlin Statistics") {
     override fun actionPerformed(e: AnActionEvent) {
-        println("Button clicked!")
         val project = e.project ?: return
         val editor = FileEditorManager.getInstance(project).selectedTextEditor
         val document = editor?.document
@@ -39,33 +38,20 @@ class ShowStatisticsAction : AnAction("Show Kotlin Statistics") {
         }
     }
 
-    fun getKotlinFileStatistics(fileText: String, project: Project, file: VirtualFile): List<String> {
-        val psiFile = PsiManager.getInstance(project).findFile(file) ?: return emptyList()
-        val lines = fileText.lines()
-        val nonEmptyLines = lines.filter { it.isNotBlank() }
-
-        val totalLines = lines.size
-        val nonEmptyLineCount = nonEmptyLines.size
+    fun getTodoCount(project: Project, file: VirtualFile): Int {
         var todoLines = 0
-        var longestFunctionLength = 0
-
-        // Подсчёт строк с TODO
-        // val todoRegex = Regex("""(?<=//|#|/\*|<!--)\s*TODO\b""", RegexOption.IGNORE_CASE)
-        // val todoRegexFunction = Regex("""\s*TODO\s*(\s*)\s*""", RegexOption.IGNORE_CASE)
-
-//        var longestFunctionNonEmptyLength = 0
-//        var currentFunctionLength = 0
-//        var currentFunctionNonEmptyLength = 0
-//        var insideFunction = false
-        // считаем todo по паттернам
         val todoPatterns = TodoIndexPatternProvider.getInstance().indexPatterns
         val manager = TodoCacheManager.getInstance(project)
         for (pattern in todoPatterns){
             todoLines += manager.getTodoCount(file, pattern)
         }
+        return todoLines
+    }
 
-        // считаем длинную функцию
-        val document = psiFile.viewProvider.document ?: return emptyList()
+    fun getLongestFunction(project: Project, file: VirtualFile): Int{
+        val psiFile = PsiManager.getInstance(project).findFile(file) ?: return 0
+        var longestFunctionLength = 0
+        val document = psiFile.viewProvider.document ?: return 0
 
         val functions = PsiTreeUtil.findChildrenOfType(psiFile, PsiElement::class.java)
         for (function in functions) {
@@ -82,27 +68,18 @@ class ShowStatisticsAction : AnAction("Show Kotlin Statistics") {
                 }
             }
         }
+        return longestFunctionLength
+    }
 
-        println(longestFunctionLength)
+    fun getKotlinFileStatistics(fileText: String, project: Project, file: VirtualFile): List<String> {
+        val lines = fileText.lines()
+        val nonEmptyLines = lines.filter { it.isNotBlank() }
 
+        val totalLines = lines.size
+        val nonEmptyLineCount = nonEmptyLines.size
 
-//        for (line in lines) {
-//            val trimmedLine = line.trim()
-//            if (line.trim().startsWith("fun ")) {
-//                insideFunction = true
-//            }
-//            if (insideFunction) {
-//                currentFunctionLength++
-//                if (trimmedLine.isNotBlank()) {
-//                    currentFunctionNonEmptyLength++
-//                }
-//            }
-//            if (trimmedLine.endsWith("}")) {
-//                insideFunction = false
-//                longestFunctionLength = maxOf(longestFunctionLength, currentFunctionLength)
-//                longestFunctionNonEmptyLength = maxOf(longestFunctionNonEmptyLength, currentFunctionNonEmptyLength)
-//            }
-//        }
+        val todoLines = getTodoCount(project, file)
+        val longestFunctionLength = getLongestFunction(project, file)
 
         return listOf(
         "Total lines: $totalLines",
